@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>寵物血糖紀錄趨勢圖</title>
+    <!-- Pico.css -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --spacing: 1rem; }
+        body { padding: var(--spacing); }
+        .container { max-width: 900px; }
+        canvas { background: #fff; border-radius: 8px; padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .loading { text-align: center; padding: 2rem; }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <hgroup>
+            <h1>🐾 寵物血糖監測系統</h1>
+            <h2>歷史數據趨勢分析</h2>
+        </hgroup>
+
+        <article id="chart-container">
+            <div id="loader" class="loading">
+                <p aria-busy="true">正在從 Notion 讀取數據...</p>
+            </div>
+            <canvas id="bgChart" style="display: none;"></canvas>
+        </article>
+
+        <footer style="margin-top: 2rem; text-align: center;">
+            <small>資料來源：Notion Database | 由 Google Apps Script 強力驅動</small>
+        </footer>
+    </main>
+
+    <script>
+        // 請在此處填入您的 GAS Web App 部署網址
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbw18-mYPD1Fg7AHCb6d5Fk-1AEstyNT0zxg-q3xTzY9i7F8hA_cgPYRsTTHlPeJ8plM8w/exec';
+
+        async function initChart() {
+            try {
+                const response = await fetch(`${GAS_URL}?action=getData`);
+                if (!response.ok) throw new Error('網路回應不正常');
+                
+                const data = await response.json();
+                
+                if (data.length === 0) {
+                    document.getElementById('loader').innerHTML = '<p>尚無紀錄數據。</p>';
+                    return;
+                }
+
+                const labels = data.map(item => new Date(item.time).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
+                const values = data.map(item => item.bg);
+                const insulins = data.map(item => item.insulin);
+                const foods = data.map(item => item.food);
+                const notes = data.map(item => item.note);
+
+                document.getElementById('loader').style.display = 'none';
+                const ctx = document.getElementById('bgChart');
+                ctx.style.display = 'block';
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '血糖值 (mg/dL)',
+                            data: values,
+                            borderColor: '#1DB446',
+                            backgroundColor: 'rgba(29, 180, 70, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            fill: true,
+                            pointRadius: 5,
+                            pointHoverRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    afterBody: function(context) {
+                                        const index = context[0].dataIndex;
+                                        let extra = `胰島素: ${insulins[index]} U\n餵食量: ${foods[index]} g`;
+                                        if (notes[index] && notes[index] !== "無") {
+                                            extra += `\n備註: ${notes[index]}`;
+                                        }
+                                        return extra;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                title: { display: true, text: 'mg/dL' }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('loader').innerHTML = `<p style="color: red;">讀取失敗: ${error.message}<br>請確認 GAS 已正確部署並開啟權限。</p>`;
+            }
+        }
+
+        if (GAS_URL === 'YOUR_GAS_WEB_APP_URL') {
+            document.getElementById('loader').innerHTML = '<p style="color: orange;">⚠️ 請先在 index.html 中設定 GAS_URL</p>';
+        } else {
+            initChart();
+        }
+    </script>
+</body>
+</html>
