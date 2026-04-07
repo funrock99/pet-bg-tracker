@@ -14,6 +14,9 @@
         .container { max-width: 900px; }
         canvas { background: #fff; border-radius: 8px; padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .loading { text-align: center; padding: 2rem; }
+        .filter-container { margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1rem; }
+        .filter-container select { margin-bottom: 0; flex: 1; }
+        .filter-container label { margin-bottom: 0; white-space: nowrap; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -22,6 +25,13 @@
             <h1>🐾 寵物血糖監測系統</h1>
             <h2>歷史數據趨勢分析</h2>
         </hgroup>
+
+        <div class="filter-container" id="filter-section" style="display: none;">
+            <label for="petSelector">選擇寵物：</label>
+            <select id="petSelector" onchange="filterChart()">
+                <!-- 動態生成選項 -->
+            </select>
+        </div>
 
         <article id="chart-container">
             <div id="loader" class="loading">
@@ -36,75 +46,106 @@
     </main>
 
     <script>
-        // 請在此處填入您的 GAS Web App 部署網址
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbw18-mYPD1Fg7AHCb6d5Fk-1AEstyNT0zxg-q3xTzY9i7F8hA_cgPYRsTTHlPeJ8plM8w/exec';
+        let allData = [];
+        let chartInstance = null;
 
         async function initChart() {
             try {
                 const response = await fetch(`${GAS_URL}?action=getData`);
                 if (!response.ok) throw new Error('網路回應不正常');
                 
-                const data = await response.json();
+                allData = await response.json();
                 
-                if (data.length === 0) {
+                if (allData.length === 0) {
                     document.getElementById('loader').innerHTML = '<p>尚無紀錄數據。</p>';
                     return;
                 }
 
-                const labels = data.map(item => new Date(item.time).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
-                const values = data.map(item => item.bg);
-                const insulins = data.map(item => item.insulin);
-                const foods = data.map(item => item.food);
-                const notes = data.map(item => item.note);
+                // 提取所有不重複的寵物名字
+                const petNames = [...new Set(allData.map(item => item.pet))];
+                const selector = document.getElementById('petSelector');
+                
+                // 清空並生成選項
+                selector.innerHTML = petNames.map(name => `<option value="${name}">${name}</option>`).join('');
+                
+                // 如果有多於一隻寵物，才顯示篩選器
+                if (petNames.length > 0) {
+                    document.getElementById('filter-section').style.display = 'flex';
+                }
 
-                document.getElementById('loader').style.display = 'none';
-                const ctx = document.getElementById('bgChart');
-                ctx.style.display = 'block';
+                // 初始繪圖（預設顯示第一隻寵物）
+                renderChart(petNames[0]);
 
-                new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: '血糖值 (mg/dL)',
-                            data: values,
-                            borderColor: '#1DB446',
-                            backgroundColor: 'rgba(29, 180, 70, 0.1)',
-                            borderWidth: 3,
-                            tension: 0.3,
-                            fill: true,
-                            pointRadius: 5,
-                            pointHoverRadius: 8
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            tooltip: {
-                                callbacks: {
-                                    afterBody: function(context) {
-                                        const index = context[0].dataIndex;
-                                        let extra = `胰島素: ${insulins[index]} U\n餵食量: ${foods[index]} g`;
-                                        if (notes[index] && notes[index] !== "無") {
-                                            extra += `\n備註: ${notes[index]}`;
-                                        }
-                                        return extra;
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: false,
-                                title: { display: true, text: 'mg/dL' }
-                            }
-                        }
-                    }
-                });
             } catch (error) {
                 console.error('Error:', error);
                 document.getElementById('loader').innerHTML = `<p style="color: red;">讀取失敗: ${error.message}<br>請確認 GAS 已正確部署並開啟權限。</p>`;
             }
+        }
+
+        function filterChart() {
+            const selectedPet = document.getElementById('petSelector').value;
+            renderChart(selectedPet);
+        }
+
+        function renderChart(petName) {
+            const filteredData = allData.filter(item => item.pet === petName);
+            
+            const labels = filteredData.map(item => new Date(item.time).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
+            const values = filteredData.map(item => item.bg);
+            const insulins = filteredData.map(item => item.insulin);
+            const foods = filteredData.map(item => item.food);
+            const notes = filteredData.map(item => item.note);
+
+            document.getElementById('loader').style.display = 'none';
+            const ctx = document.getElementById('bgChart');
+            ctx.style.display = 'block';
+
+            // 如果已有圖表，先銷毀
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `${petName} 的血糖值 (mg/dL)`,
+                        data: values,
+                        borderColor: '#1DB446',
+                        backgroundColor: 'rgba(29, 180, 70, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 5,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                afterBody: function(context) {
+                                    const index = context[0].dataIndex;
+                                    let extra = `胰島素: ${insulins[index]} U\n餵食量: ${foods[index]} g`;
+                                    if (notes[index] && notes[index] !== "無") {
+                                        extra += `\n備註: ${notes[index]}`;
+                                    }
+                                    return extra;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: { display: true, text: 'mg/dL' }
+                        }
+                    }
+                }
+            });
         }
 
         if (GAS_URL === 'YOUR_GAS_WEB_APP_URL') {
