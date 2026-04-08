@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新增血糖紀錄</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body { padding: 1rem; }
+        .container { max-width: 600px; }
+        ins { text-decoration: none; color: #1DB446; font-weight: bold; }
+        button { background-color: #1DB446; border: none; margin-top: 1rem; }
+        .loading-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.8); z-index: 1000; justify-content: center; align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading-overlay">
+        <article aria-busy="true">正在提交紀錄...</article>
+    </div>
+
+    <main class="container">
+        <hgroup>
+            <h1>🩸 新增紀錄</h1>
+            <h2>一次填寫，同步 Notion</h2>
+        </hgroup>
+
+        <form id="recordForm">
+            <label for="petName">🐾 寵物名字
+                <input type="text" id="petName" name="petName" placeholder="例如：斑斑" required>
+            </label>
+
+            <div class="grid">
+                <label for="bg">💉 血糖值 (mg/dL)
+                    <input type="number" id="bg" name="bg" placeholder="0" required>
+                </label>
+                <label for="insulin">🧪 胰島素 (U)
+                    <input type="number" id="insulin" name="insulin" step="0.5" value="0">
+                </label>
+            </div>
+
+            <div class="grid">
+                <label for="food">🍽️ 餵食量 (g)
+                    <input type="number" id="food" name="food" value="0">
+                </label>
+                <label for="time">⏰ 紀錄時間
+                    <input type="datetime-local" id="time" name="time">
+                </label>
+            </div>
+
+            <label for="note">📝 備註
+                <textarea id="note" name="note" placeholder="例如：剛吃完飯"></textarea>
+            </label>
+
+            <button type="submit" id="submitBtn">🚀 確認提交 Notion</button>
+        </form>
+    </main>
+
+    <script>
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbw18-mYPD1Fg7AHCb6d5Fk-1AEstyNT0zxg-q3xTzY9i7F8hA_cgPYRsTTHlPeJ8plM8w/exec';
+        
+        // 初始化 LIFF
+        async function initLiff() {
+            try {
+                await liff.init({ liffId: "YOUR_LIFF_ID_HERE" }); // 這裡稍後要填入您的 LIFF ID
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                }
+                
+                // 設定預設時間為現在 (台灣時區)
+                const now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                document.getElementById('time').value = now.toISOString().slice(0, 16);
+                
+            } catch (err) {
+                console.error('LIFF Init failed', err);
+            }
+        }
+
+        document.getElementById('recordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            document.getElementById('loading').style.display = 'flex';
+            
+            const formData = {
+                action: 'webSubmit',
+                petName: document.getElementById('petName').value,
+                bg: document.getElementById('bg').value,
+                insulin: document.getElementById('insulin').value,
+                food: document.getElementById('food').value,
+                time: document.getElementById('time').value,
+                note: document.getElementById('note').value || "無"
+            };
+
+            try {
+                // 使用 JSONP 或特殊的 CORS 處理提交給 GAS
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // GAS Web App 限制，使用 no-cors 提交
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                // 因為 no-cors 無法讀取回應內容，我們假設 2 秒後成功並關閉
+                setTimeout(() => {
+                    alert('✅ 紀錄已送出！');
+                    liff.closeWindow();
+                }, 1500);
+
+            } catch (error) {
+                alert('❌ 提交失敗：' + error.message);
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+
+        initLiff();
+    </script>
+</body>
+</html>
