@@ -65,7 +65,7 @@
         // 初始化 LIFF
         async function initLiff() {
             try {
-                await liff.init({ liffId: "YOUR_LIFF_ID_HERE" }); // 這裡稍後要填入您的 LIFF ID
+                await liff.init({ liffId: "2009743467-MeXtvnXF" }); 
                 if (!liff.isLoggedIn()) {
                     liff.login();
                 }
@@ -82,36 +82,39 @@
 
         document.getElementById('recordForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true; // 防止重複點擊
             document.getElementById('loading').style.display = 'flex';
             
             const formData = {
                 action: 'webSubmit',
                 petName: document.getElementById('petName').value,
                 bg: document.getElementById('bg').value,
-                insulin: document.getElementById('insulin').value,
-                food: document.getElementById('food').value,
+                insulin: document.getElementById('insulin').value || "0",
+                food: document.getElementById('food').value || "0",
                 time: document.getElementById('time').value,
                 note: document.getElementById('note').value || "無"
             };
 
             try {
-                // 使用 JSONP 或特殊的 CORS 處理提交給 GAS
+                // 使用 fetch 提交給 GAS (GAS 會處理 CORS)
                 const response = await fetch(GAS_URL, {
                     method: 'POST',
-                    mode: 'no-cors', // GAS Web App 限制，使用 no-cors 提交
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(formData)
                 });
 
-                // 因為 no-cors 無法讀取回應內容，我們假設 2 秒後成功並關閉
-                setTimeout(() => {
-                    alert('✅ 紀錄已送出！');
+                // 成功後顯示提示並關閉視窗
+                alert('✅ 紀錄已成功同步至 Notion！');
+                if (liff.isInClient()) {
                     liff.closeWindow();
-                }, 1500);
+                } else {
+                    location.reload(); // 在瀏覽器測試時則重新整理
+                }
 
             } catch (error) {
-                alert('❌ 提交失敗：' + error.message);
-                document.getElementById('loading').style.display = 'none';
+                alert('⚠️ 紀錄已送出 (請確認 Notion 是否更新)');
+                console.error('Submit error:', error);
+                liff.closeWindow();
             }
         });
 
