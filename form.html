@@ -104,12 +104,23 @@
                     body: JSON.stringify(formData)
                 });
 
-                // 成功後顯示提示並關閉視窗
-                alert('✅ 紀錄已成功同步至 Notion！');
-                if (liff.isInClient()) {
+                const result = await response.json(); // 解析 GAS 回傳的 JSON
+
+                if (result.status === 'ok') {
+                    // 成功後顯示提示並關閉視窗
+                    alert('✅ 紀錄已成功同步至 Notion！');
+                    if (liff.isInClient()) {
+                        liff.closeWindow();
+                    } else {
+                        location.reload();
+                    }
+                } else if (result.message === 'Forbidden') {
+                    alert('❌ 提交失敗：您是非授權人員，請聯繫管理員。');
                     liff.closeWindow();
                 } else {
-                    location.reload(); // 在瀏覽器測試時則重新整理
+                    alert('❌ 發生錯誤：' + (result.message || '未知錯誤'));
+                    document.getElementById('loading').style.display = 'none';
+                    submitBtn.disabled = false;
                 }
 
             } catch (error) {
