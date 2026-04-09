@@ -57,10 +57,19 @@
         async function initChart() {
             try {
                 const response = await fetch(`${GAS_URL}?action=getData&key=${APP_KEY}`);
-                if (!response.ok) throw new Error('網路回應不正常');
+                if (!response.ok) throw new Error('網路連線失敗');
                 
                 const result = await response.json();
-                if (result.status === 'error') throw new Error(result.message);
+                
+                // 檢查是否回傳錯誤訊息 (例如 Unauthorized)
+                if (result.status === 'error') {
+                    throw new Error(`驗證失敗: ${result.message}`);
+                }
+                
+                // 確保 result 是陣列
+                if (!Array.isArray(result)) {
+                    throw new Error('回傳格式錯誤 (非陣列)');
+                }
                 
                 allData = result;
                 
