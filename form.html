@@ -88,6 +88,7 @@
             
             const formData = {
                 action: 'webSubmit',
+                accessToken: liff.getAccessToken(), // 新增：傳送身份驗證 Token
                 petName: document.getElementById('petName').value,
                 bg: document.getElementById('bg').value,
                 insulin: document.getElementById('insulin').value || "0",
