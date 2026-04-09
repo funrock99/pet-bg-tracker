@@ -47,15 +47,22 @@
 
     <script>
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbw18-mYPD1Fg7AHCb6d5Fk-1AEstyNT0zxg-q3xTzY9i7F8hA_cgPYRsTTHlPeJ8plM8w/exec';
+        // 安全檢查：從網址參數取得金鑰 (?key=你的金鑰)
+        const urlParams = new URLSearchParams(window.location.search);
+        const APP_KEY = urlParams.get('key') || 'my-secret-key'; 
+        
         let allData = [];
         let chartInstance = null;
 
         async function initChart() {
             try {
-                const response = await fetch(`${GAS_URL}?action=getData`);
+                const response = await fetch(`${GAS_URL}?action=getData&key=${APP_KEY}`);
                 if (!response.ok) throw new Error('網路回應不正常');
                 
-                allData = await response.json();
+                const result = await response.json();
+                if (result.status === 'error') throw new Error(result.message);
+                
+                allData = result;
                 
                 if (allData.length === 0) {
                     document.getElementById('loader').innerHTML = '<p>尚無紀錄數據。</p>';
