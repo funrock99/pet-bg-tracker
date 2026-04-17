@@ -6,9 +6,11 @@
 - **`form.html`**：LIFF (LINE Front-end Framework) 網頁表單，提供使用者在 LINE App 內一次性填寫血糖、胰島素與餵食量。
 - **`index.html`**：數據視覺化儀表板，透過 Chart.js 串接 GAS API 並顯示 Notion 資料庫中的血糖波動趨勢。
 
-## 🚀 部署建議
-- 本目錄適合部署於 **GitHub Pages** 以提供靜態網頁存取。
-- `index.html` 存取時需帶入 `?key=您的金鑰` 以通過安全驗證。
+## 🚀 主要功能
+- **數據視覺化**：透過 `index.html` 即時展示血糖趨勢。
+    - **多寵物切換**：支援管理多隻寵物的數據。
+    - **日期區間查詢**：支援依日期範圍過濾歷史紀錄，預設顯示最近 30 天。
+- **快速紀錄**：透過 `form.html` (LIFF) 在 LINE 內快速填寫數據。
 
 ---
 本專案與 Google Apps Script (GAS) 後端及 Notion API 協同運作。

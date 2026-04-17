@@ -26,11 +26,23 @@
             <h2>歷史數據趨勢分析</h2>
         </hgroup>
 
-        <div class="filter-container" id="filter-section" style="display: none;">
-            <label for="petSelector">選擇寵物：</label>
-            <select id="petSelector" onchange="filterChart()">
-                <!-- 動態生成選項 -->
-            </select>
+        <div class="filter-container" id="filter-section" style="display: none; flex-direction: column; align-items: flex-start;">
+            <div style="display: flex; flex-wrap: wrap; gap: 1rem; width: 100%;">
+                <div style="flex: 1; min-width: 150px;">
+                    <label for="petSelector">選擇寵物：</label>
+                    <select id="petSelector" onchange="filterChart()">
+                        <!-- 動態生成選項 -->
+                    </select>
+                </div>
+                <div style="flex: 1; min-width: 150px;">
+                    <label for="startDate">開始日期：</label>
+                    <input type="date" id="startDate" onchange="filterChart()">
+                </div>
+                <div style="flex: 1; min-width: 150px;">
+                    <label for="endDate">結束日期：</label>
+                    <input type="date" id="endDate" onchange="filterChart()">
+                </div>
+            </div>
         </div>
 
         <article id="chart-container">
@@ -54,7 +66,18 @@
         let allData = [];
         let chartInstance = null;
 
+        // 初始化日期選擇器 (預設最近 30 天)
+        function initDateFilters() {
+            const end = new Date();
+            const start = new Date();
+            start.setDate(end.getDate() - 30);
+            
+            document.getElementById('startDate').value = start.toISOString().split('T')[0];
+            document.getElementById('endDate').value = end.toISOString().split('T')[0];
+        }
+
         async function initChart() {
+            initDateFilters();
             try {
                 const response = await fetch(`${GAS_URL}?action=getData&key=${APP_KEY}`);
                 if (!response.ok) throw new Error('網路連線失敗');
@@ -85,13 +108,11 @@
                 // 清空並生成選項
                 selector.innerHTML = petNames.map(name => `<option value="${name}">${name}</option>`).join('');
                 
-                // 如果有多於一隻寵物，才顯示篩選器
-                if (petNames.length > 0) {
-                    document.getElementById('filter-section').style.display = 'flex';
-                }
+                // 顯示篩選區塊
+                document.getElementById('filter-section').style.display = 'flex';
 
-                // 初始繪圖（預設顯示第一隻寵物）
-                renderChart(petNames[0]);
+                // 初始繪圖
+                filterChart();
 
             } catch (error) {
                 console.error('Error:', error);
@@ -101,12 +122,29 @@
 
         function filterChart() {
             const selectedPet = document.getElementById('petSelector').value;
-            renderChart(selectedPet);
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            renderChart(selectedPet, start, end);
         }
 
-        function renderChart(petName) {
-            const filteredData = allData.filter(item => item.pet === petName);
-            
+        function renderChart(petName, startDate, endDate) {
+            // 同時篩選寵物與日期區間
+            const filteredData = allData.filter(item => {
+                const itemDate = item.time.split('T')[0];
+                const matchesPet = item.pet === petName;
+                const matchesDate = (!startDate || itemDate >= startDate) && (!endDate || itemDate <= endDate);
+                return matchesPet && matchesDate;
+            });
+
+            if (filteredData.length === 0) {
+                // 如果沒有數據，顯示提示並清空圖表
+                if (chartInstance) chartInstance.destroy();
+                document.getElementById('bgChart').style.display = 'none';
+                document.getElementById('loader').style.display = 'block';
+                document.getElementById('loader').innerHTML = '<p>該區間尚無數據。</p>';
+                return;
+            }
+
             const labels = filteredData.map(item => new Date(item.time).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
             const values = filteredData.map(item => item.bg);
             const insulins = filteredData.map(item => item.insulin);
