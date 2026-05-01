@@ -66,14 +66,22 @@
         let allData = [];
         let chartInstance = null;
 
-        // 初始化日期選擇器 (預設最近 30 天)
+        // 初始化日期選擇器 (預設最近 30 天，修正 UTC 時差問題)
         function initDateFilters() {
             const end = new Date();
             const start = new Date();
             start.setDate(end.getDate() - 30);
             
-            document.getElementById('startDate').value = start.toISOString().split('T')[0];
-            document.getElementById('endDate').value = end.toISOString().split('T')[0];
+            // 格式化為在地日期 (YYYY-MM-DD)
+            const toLocalDateString = (date) => {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            };
+            
+            document.getElementById('startDate').value = toLocalDateString(start);
+            document.getElementById('endDate').value = toLocalDateString(end);
         }
 
         async function initChart() {
