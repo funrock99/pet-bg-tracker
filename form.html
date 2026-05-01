@@ -70,6 +70,14 @@
                     liff.login();
                 }
                 
+                // --- 新增：從 URL 參數預填資料 ---
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.has('pet')) document.getElementById('petName').value = urlParams.get('pet');
+                if (urlParams.has('bg')) document.getElementById('bg').value = urlParams.get('bg');
+                if (urlParams.has('ins')) document.getElementById('insulin').value = urlParams.get('ins');
+                if (urlParams.has('food')) document.getElementById('food').value = urlParams.get('food');
+                if (urlParams.has('note')) document.getElementById('note').value = urlParams.get('note');
+
                 // 設定預設時間為現在 (台灣時區)
                 const now = new Date();
                 now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
