@@ -78,10 +78,16 @@
                 if (urlParams.has('food')) document.getElementById('food').value = urlParams.get('food');
                 if (urlParams.has('note')) document.getElementById('note').value = urlParams.get('note');
 
-                // 設定預設時間為現在 (台灣時區)
-                const now = new Date();
-                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-                document.getElementById('time').value = now.toISOString().slice(0, 16);
+                if (urlParams.has('time')) {
+                    // 將 "YYYY-MM-DD HH:mm" 轉換為 "YYYY-MM-DDTHH:mm"
+                    const timeParam = urlParams.get('time').replace(' ', 'T');
+                    document.getElementById('time').value = timeParam;
+                } else {
+                    // 設定預設時間為現在 (台灣時區)
+                    const now = new Date();
+                    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                    document.getElementById('time').value = now.toISOString().slice(0, 16);
+                }
                 
             } catch (err) {
                 console.error('LIFF Init failed', err);
